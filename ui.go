@@ -31,6 +31,13 @@ type (
 	healthUpdateMsg    []streamItem
 )
 
+type playbackMode int
+
+const (
+	modeWebView playbackMode = iota
+	modeBrowser
+)
+
 var sourceNames = []string{"la18hd", "pelotalibre", "pirlotv"}
 
 var healthClient = &http.Client{Timeout: 3 * time.Second}
@@ -182,7 +189,7 @@ type model struct {
 	state             state
 	source            Source
 	sourceName        string
-	webMode           bool
+	mode              playbackMode
 	refresh           bool
 	events            []Event
 	matchList         list.Model
@@ -204,11 +211,16 @@ func initialModel(source Source, name string, web bool, refresh bool) model {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 	s.Spinner = spinner.Dot
 
+	mode := modeWebView
+	if web {
+		mode = modeBrowser
+	}
+
 	m := model{
 		state:      stateLoading,
 		source:     source,
 		sourceName: name,
-		webMode:    web,
+		mode:       mode,
 		refresh:    refresh,
 		spinner:    s,
 	}
@@ -241,6 +253,13 @@ func playMPVCmd(url string) tea.Cmd {
 func openBrowserCmd(url string) tea.Cmd {
 	return func() tea.Msg {
 		openBrowser(url)
+		return playbackDoneMsg{}
+	}
+}
+
+func openWebViewCmd(url string) tea.Cmd {
+	return func() tea.Msg {
+		openWebView(url)
 		return playbackDoneMsg{}
 	}
 }
@@ -516,12 +535,13 @@ func (m model) streamListUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		url := resolveURL(m.source, si.link)
-		if m.webMode || strings.Contains(url, "latamvidzfy") || strings.Contains(url, "vidzenvivo") {
-			m.state = statePlaying
-			return m, openBrowserCmd(url)
-		}
 		m.state = statePlaying
-		return m, playMPVCmd(url)
+		switch m.mode {
+		case modeBrowser:
+			return m, openBrowserCmd(url)
+		default:
+			return m, openWebViewCmd(url)
+		}
 	case "b":
 		it := m.streamList.SelectedItem()
 		if it == nil {
@@ -533,6 +553,13 @@ func (m model) streamListUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.state = statePlaying
 		return m, openBrowserCmd(resolveURL(m.source, si.link))
+	case "w":
+		if m.mode == modeWebView {
+			m.mode = modeBrowser
+		} else {
+			m.mode = modeWebView
+		}
+		return m, nil
 	case "s":
 		m.prevState = m.state
 		m.sourceMenu = buildSourceMenu(m.sourceName, m.width, m.height-4)
@@ -652,8 +679,12 @@ func (m model) streamListView() string {
 		m.streamList.SetSize(m.width, m.height-4)
 	}
 
+	modeLabel := "webview"
+	if m.mode == modeBrowser {
+		modeLabel = "browser"
+	}
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Padding(0, 1)
-	help := helpStyle.Render("l: play  |  b: browser  |  h: back  |  s: source  |  q: quit")
+	help := helpStyle.Render(fmt.Sprintf("l: play (%s)  |  w: switch  |  b: force browser  |  h: back  |  s: source  |  q: quit", modeLabel))
 
 	return lipgloss.JoinVertical(lipgloss.Top,
 		m.streamList.View(),
