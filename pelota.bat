@@ -1,11 +1,11 @@
 @echo off
 setlocal
 
-set "APP_DIR=%LOCALAPPDATA%\pelota-libre"
+set "APP_DIR=%LOCALAPPDATA%\pelota"
 set "BIN=%APP_DIR%\pelota.exe"
 
 if not exist "%BIN%" (
-    echo Downloading pelota-libre to %APP_DIR%...
+    echo Downloading pelota to %APP_DIR%...
     if not exist "%APP_DIR%" mkdir "%APP_DIR%"
     powershell -Command "
         $url = 'https://github.com/rodrigo-sys/pelota/releases/latest/download/pelota-windows-amd64.exe';

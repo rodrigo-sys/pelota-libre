@@ -1,4 +1,4 @@
-# pelota-libre
+# pelota
 
 Browse live football streams from a terminal. Select a match, pick a channel, watch in your browser or mpv.
 
@@ -46,7 +46,7 @@ pelota-go --refresh  # skip cache
 
 ```sh
 git clone https://github.com/rodrigo-sys/pelota
-cd pelota-libre
+cd pelota
 go build -o pelota .
 ```
 
