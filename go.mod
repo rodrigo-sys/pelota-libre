@@ -1,4 +1,4 @@
-module github.com/rodrigo-sys/pelota-libre
+module github.com/rodrigo-sys/pelota
 
 go 1.26.4
 

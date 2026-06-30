@@ -9,10 +9,10 @@ Scrapes match listings from public websites (librepelota.su, pirlotvplay.dev) an
 ## Install
 
 ```sh
-go install github.com/rodrigo-sys/pelota-libre@latest
+go install github.com/rodrigo-sys/pelota@latest
 ```
 
-Or grab a binary from the [releases page](https://github.com/rodrigo-sys/pelota-libre/releases).
+Or grab a binary from the [releases page](https://github.com/rodrigo-sys/pelota/releases).
 
 ## Usage
 
@@ -45,7 +45,7 @@ pelota-go --refresh  # skip cache
 ## Build from source
 
 ```sh
-git clone https://github.com/rodrigo-sys/pelota-libre
+git clone https://github.com/rodrigo-sys/pelota
 cd pelota-libre
 go build -o pelota .
 ```
