@@ -1,0 +1,122 @@
+name: Release
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  check-release-exists:
+    runs-on: ubuntu-latest
+    outputs:
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
+      tag: ${{ steps.check_release.outputs.tag }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check_release
+        run: |
+          TAG="$(git describe --tags --abbrev=0)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if gh release view "$TAG" &>/dev/null; then
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check-release-exists
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ""
+            cgo: true
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: ""
+            cgo: false
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            ext: ""
+            cgo: true
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            ext: ""
+            cgo: true
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: ".exe"
+            cgo: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install Linux deps (webview)
+        if: matrix.os == 'ubuntu-latest' && matrix.cgo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+          mkdir -p "$HOME/.local/lib/pkgconfig"
+          cat > "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc" << 'PCEOF'
+Name: webkit2gtk-4.0
+Description: Web content engine for GTK+ (4.0 compat)
+Requires: webkit2gtk-4.1
+Version: 4.1
+Libs:
+Cflags:
+PCEOF
+          echo "PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig" >> "$GITHUB_ENV"
+      - name: Set CGo
+        if: matrix.cgo
+        run: echo "CGO_ENABLED=1" >> "$GITHUB_ENV"
+      - name: Unset CGo
+        if: matrix.cgo == false
+        run: echo "CGO_ENABLED=0" >> "$GITHUB_ENV"
+      - name: Build
+        run: |
+          mkdir -p dist
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -o dist/pelota-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pelota-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/pelota-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  release:
+    needs: [check-release-exists, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pelota-*
+          merge-multiple: true
+      - name: Delete existing release
+        if: needs.check-release-exists.outputs.release_exists == 'true'
+        run: |
+          gh release delete "${{ needs.check-release-exists.outputs.tag }}" --yes
+          git tag -d "${{ needs.check-release-exists.outputs.tag }}" || true
+          git push --delete origin "${{ needs.check-release-exists.outputs.tag }}" || true
+      - name: Create release
+        run: |
+          gh release create "${{ needs.check-release-exists.outputs.tag }}" \
+            pelota-* \
+            --title "${{ needs.check-release-exists.outputs.tag }}"
+      - name: Remove old releases
+        run: |
+          gh release list --limit 1000 --json tagName --jq '.[1:].[].tagName' |
+          xargs -r -I{} gh release delete '{}' --yes
