@@ -100,11 +100,14 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           pattern: pelota-*
           merge-multiple: true
-      - name: Delete existing release
+      - name: Delete existing release & tag
         if: needs.check-release-exists.outputs.release_exists == 'true'
         run: |
           gh release delete "${{ needs.check-release-exists.outputs.tag }}" --yes
