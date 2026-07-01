@@ -83,6 +83,7 @@ jobs:
         if: matrix.cgo == false
         run: echo "CGO_ENABLED=0" >> "$GITHUB_ENV"
       - name: Build
+        shell: bash
         run: |
           mkdir -p dist
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
