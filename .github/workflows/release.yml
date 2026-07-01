@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ""
+            cgo: true
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: ""
+            cgo: false
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            ext: ""
+            cgo: true
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            ext: ""
+            cgo: true
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: ".exe"
+            cgo: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install Linux deps
+        if: matrix.os == 'ubuntu-latest' && matrix.cgo
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev
+      - name: Build
+        run: |
+          CGO_ENABLED=$([ "${{ matrix.cgo }}" = "true" ] && echo "1" || echo "0") \
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -o dist/pelota-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pelota-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/pelota-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+  release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pelota-*
+          merge-multiple: true
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pelota-*
