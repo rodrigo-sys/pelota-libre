@@ -69,14 +69,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev
           mkdir -p "$HOME/.local/lib/pkgconfig"
-          cat > "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc" << 'PCEOF'
-Name: webkit2gtk-4.0
-Description: Web content engine for GTK+ (4.0 compat)
-Requires: webkit2gtk-4.1
-Version: 4.1
-Libs:
-Cflags:
-PCEOF
+          echo "Name: webkit2gtk-4.0" > "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
+          echo "Description: Web content engine for GTK+ (4.0 compat)" >> "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
+          echo "Requires: webkit2gtk-4.1" >> "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
+          echo "Version: 4.1" >> "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
+          echo "Libs:" >> "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
+          echo "Cflags:" >> "$HOME/.local/lib/pkgconfig/webkit2gtk-4.0.pc"
           echo "PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig" >> "$GITHUB_ENV"
       - name: Set CGo
         if: matrix.cgo
